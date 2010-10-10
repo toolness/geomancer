@@ -20,6 +20,39 @@ function defaultNow() {
   return new Date();
 }
 
+function ExpiringChannelMap(options) {
+  if (typeof(options.lifetime) != "number")
+    throw new Error("options.lifetime must be a number");
+
+  var self = this;
+  var now = options.now || defaultNow;
+  var lifetime = options.lifetime;
+  var lastCheck = now();
+  var intervalMS = options.intervalMS || (options.lifetime / 5);
+  var map = {};
+
+  function maybeExpireChannels(rightNow) {
+    if (rightNow - lastCheck >= intervalMS) {
+      lastCheck = rightNow;
+      for (name in map)
+        if (map[name].expiry <= rightNow)
+          delete map[name];
+    }
+  }
+
+  self.get = function get(name) {
+    var rightNow = now();
+
+    maybeExpireChannels(rightNow);
+
+    if (!(name in map))
+      map[name] = {channel: new Channel(now)};
+
+    map[name].expiry = new Date(rightNow.getTime() + lifetime);
+    return map[name].channel;
+  };
+}
+
 function Channel(now) {
   var self = this;
   var rev = 0;
@@ -64,6 +97,7 @@ function Channel(now) {
 sys.inherits(Channel, events.EventEmitter);
 
 exports.Channel = Channel;
+exports.ExpiringChannelMap = ExpiringChannelMap;
 
 exports.parsePath = function parsePath(path) {
   var re = /\/([A-Za-z0-9]+)\/([A-Za-z]*)/;

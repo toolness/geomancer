@@ -9,7 +9,9 @@ const PORT = 8342;
 const JSON_TYPE = 'text/plain';
 const LONG_POLL_TIMEOUT = 60000;
 
-var channels = {};
+var channels = new geo.ExpiringChannelMap({
+  lifetime: 1000 * 60 * 60
+});
 
 function return404(response) {
   response.writeHead(404, {'Content-Type': 'text/plain'});
@@ -88,9 +90,7 @@ http.createServer(function(request, response) {
       sys.pump(file, response);
       return;
     } else {
-      if (!(pathInfo.channel in channels))
-        channels[pathInfo.channel] = new geo.Channel();
-      var channel = channels[pathInfo.channel];
+      var channel = channels.get(pathInfo.channel);
 
       switch (pathInfo.command) {
         case 'statuses':
