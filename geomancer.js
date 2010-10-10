@@ -1,7 +1,7 @@
 var events = require('events');
 var sys = require('sys');
 
-function Channel(name, now) {
+function Channel() {
   var self = this;
   var rev = 0;
   var statuses = {};
@@ -44,11 +44,12 @@ sys.inherits(Channel, events.EventEmitter);
 exports.Channel = Channel;
 
 exports.parsePath = function parsePath(path) {
-  var re = /\/([A-Za-z0-9]+)/;
+  var re = /\/([A-Za-z0-9]+)\/([A-Za-z]*)/;
   var match = path.match(re);
   if (match) {
     return {
-      channel: match[1]
+      channel: match[1],
+      command: match[2] || null
     };
   } else
     return null;

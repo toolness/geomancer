@@ -2,8 +2,16 @@ var assert = require('assert');
 var sys = require("sys");
 var geo = require('./geomancer');
 
-assert.deepEqual(geo.parsePath('/foo'), {
-  channel: 'foo'
+assert.deepEqual(geo.parsePath('/foo'), null);
+
+assert.deepEqual(geo.parsePath('/foo/'), {
+  channel: 'foo',
+  command: null
+});
+
+assert.deepEqual(geo.parsePath('/foo/bar'), {
+  channel: 'foo',
+  command: 'bar'
 });
 
 var infos = [];
@@ -33,5 +41,7 @@ assert.deepEqual(channel.statuses.foo.data, {
   a: 2,
   b: "bye"
 });
+
+
 
 sys.puts("Tests successful.");
