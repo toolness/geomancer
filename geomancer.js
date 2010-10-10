@@ -1,10 +1,32 @@
 var events = require('events');
 var sys = require('sys');
 
-function Channel() {
+function pad(n) {
+  return n<10 ? '0'+n : n;
+}
+
+// Taken from:
+// https://developer.mozilla.org/en/JavaScript/Reference/global_objects/date
+function ISODateString(d) {
+  return d.getUTCFullYear()+'-'
+         + pad(d.getUTCMonth()+1)+'-'
+         + pad(d.getUTCDate())+'T'
+         + pad(d.getUTCHours())+':'
+         + pad(d.getUTCMinutes())+':'
+         + pad(d.getUTCSeconds())+'Z';
+}
+
+function defaultNow() {
+  return new Date();
+}
+
+function Channel(now) {
   var self = this;
   var rev = 0;
   var statuses = {};
+
+  if (!now)
+    now = defaultNow;
 
   events.EventEmitter.call(self);
 
@@ -28,7 +50,7 @@ function Channel() {
   self.update = function(name, status) {
     statuses[name] = {
       data: status,
-      timestamp: new Date().toString()
+      timestamp: ISODateString(now())
     };
     rev++;
     self.emit('update', {

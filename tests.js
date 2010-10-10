@@ -15,7 +15,9 @@ assert.deepEqual(geo.parsePath('/foo/bar'), {
 });
 
 var infos = [];
-var channel = new geo.Channel();
+var channel = new geo.Channel(function now() {
+  return new Date(1995,11,17);
+});
 channel.on('update', function(info) {
   infos.push(info);
 });
@@ -25,9 +27,16 @@ channel.update('foo', {
   a: 1,
   b: "hi"
 });
-assert.deepEqual(infos[0].status.data, {
-  a: 1,
-  b: "hi"
+assert.deepEqual(infos[0], {
+  revision: 1,
+  name: "foo",
+  status: {
+    data: {
+      a: 1,
+      b: "hi",
+    },
+    timestamp: "1995-12-17T08:00:00Z"
+  }
 });
 assert.deepEqual(channel.statuses.foo.data, {
   a: 1,
