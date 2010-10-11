@@ -128,6 +128,30 @@ runAsyncTests({
       }
 
       runAsyncTests({
+        updateRequestWithoutProperSchema: function(onDone) {
+          var updateReq = client().request('POST', '/foo/update');
+          updateReq.end(JSON.stringify({status: 'blah'}));
+          updateReq.on('response', function(response) {
+            assert.equal(response.statusCode, 400);
+            response.on('end', onDone);
+          });
+        },
+        updateRequestNotJSON: function(onDone) {
+          var updateReq = client().request('POST', '/foo/update');
+          updateReq.end('boop');
+          updateReq.on('response', function(response) {
+            assert.equal(response.statusCode, 400);
+            response.on('end', onDone);
+          });
+        },
+        updateRequestNotPOST: function(onDone) {
+          var updateReq = client().request('GET', '/foo/update');
+          updateReq.end();
+          updateReq.on('response', function(response) {
+            assert.equal(response.statusCode, 400);
+            response.on('end', onDone);
+          });
+        },
         longPollAndUpdate: function(onDone) {
           var longPollReq = client().request('GET', '/foo/statuses?r=1');
           longPollReq.end();
