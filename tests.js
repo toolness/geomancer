@@ -114,11 +114,17 @@ runAsyncTests({
     var http = require('http');
     var timeMachine = new TimeMachine(0);
     var channels = new geo.ExpiringChannelMap({
-      lifetime: 1000,
+      lifetime: 1000000,
       now: timeMachine.now
     });
     var onRequest = geoServer.create({
-      channels: channels
+      channels: channels,
+      // With a long poll timeout this short, we could have
+      // legimately successful tests randomly fail due to
+      // heavily-loaded test machines. We should really be
+      // able to pass in mock versions of setTimeout/clearTimeout
+      // and use the TimeMachine to control time ourselves.
+      longPollTimeout: 100
     });
 
     var server = http.createServer(onRequest);
@@ -184,6 +190,14 @@ runAsyncTests({
           }));
           updateReq.on('response', function(response) {
             assert.equal(response.statusCode, 200);
+          });
+        },
+        longPollTimeout: function(onDone) {
+          var longPollReq = client().request('GET', '/never/statuses?r=1');
+          longPollReq.end();
+          longPollReq.on('response', function(response) {
+            assert.equal(response.statusCode, 304);
+            response.on('end', onDone);
           });
         },
         channelIndexHTML: function(onDone) {
