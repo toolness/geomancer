@@ -72,17 +72,21 @@ function receiveUpdates(onUpdate) {
 }
 
 onload = function() {
-  if (localStorage['name'])
+  var username = null;
+
+  if (localStorage['name']) {
     $("#name").value = localStorage['name'];
-    
+    username = $("#name").value;
+  }
+  
   $("#name").onchange = function() {
     localStorage['name'] = $("#name").value;
+    username = $("#name").value;
   };
 
   var watchId = navigator.geolocation.watchPosition(function(pos) {
-    var name = $("#name").value;
-    if (name)
-      sendUpdate(name, {
+    if (username)
+      sendUpdate(username, {
         longitude: pos.coords.longitude,
         latitude: pos.coords.latitude
       });
@@ -93,7 +97,6 @@ onload = function() {
     while (ul.firstChild)
       ul.removeChild(ul.firstChild);
     for (name in statuses) {
-      console.log(name, statuses[name]);
       var li = document.createElement("li");
       var status = statuses[name].data;
       li.textContent = name + " @ " + status.latitude +
