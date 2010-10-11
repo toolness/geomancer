@@ -145,5 +145,5 @@ runAsyncTests({
     });
   }
 }, function whenAllTestsAreDone() {
-  sys.puts('Tests successful.');
+  sys.puts('All tests successful.');
 });
