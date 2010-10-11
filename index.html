@@ -1,6 +1,110 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="author" content="Atul Varma">
-<title>index</title>
+<title>Geomancer</title>
 <!-- Date: 2010-10-09 -->
-<h1>“html5 is cool.”</h1>
+<style>
+body {
+  font-family: Futura;
+}
+
+input {
+  border: 1px dotted gray;
+  outline: none;
+}
+</style>
+<script>
+function $(sel) {
+  return document.querySelector(sel);
+}
+
+function sendUpdate(name, status) {
+  var req = new XMLHttpRequest();
+  req.open('POST', 'update');
+  req.send(JSON.stringify({
+    name: name,
+    status: status
+  }));
+}
+
+function receiveUpdates(onUpdate) {
+  const INTERVAL = 1000;
+  const TIMEOUT = 30000;
+  var rev = 0;
+  var req = null;
+  var timeoutID = null;
+
+  function scheduleNextPoll() {
+    if (req !== null) {
+      req.abort();
+      req = null;
+    }
+    if (timeoutID !== null) {
+      window.clearTimeout(timeoutID);
+      timeoutID = null;
+    }
+    window.setTimeout(longPoll, INTERVAL);
+  }
+
+  function longPoll() {
+    req = new XMLHttpRequest();
+    req.open('GET', 'statuses?r=' + rev);
+    req.onload = function() {
+      var obj = null;
+      if (req.status == 200) {
+        obj = JSON.parse(req.responseText);
+        rev = obj.revision + 1;
+      }
+      req = null;
+      scheduleNextPoll();
+      if (obj)
+        onUpdate(obj.statuses);
+    };
+    req.onerror = function() {
+      req = null;
+      scheduleNextPoll();
+    };
+    req.send(null);
+    timeoutID = window.setTimeout(scheduleNextPoll, TIMEOUT);
+  }
+  
+  longPoll();
+}
+
+onload = function() {
+  if (localStorage['name'])
+    $("#name").value = localStorage['name'];
+    
+  $("#name").onchange = function() {
+    localStorage['name'] = $("#name").value;
+  };
+
+  var watchId = navigator.geolocation.watchPosition(function(pos) {
+    var name = $("#name").value;
+    if (name)
+      sendUpdate(name, {
+        longitude: pos.coords.longitude,
+        latitude: pos.coords.latitude
+      });
+  });
+  
+  receiveUpdates(function onUpdate(statuses) {
+    var ul = $("#peeps");
+    while (ul.firstChild)
+      ul.removeChild(ul.firstChild);
+    for (name in statuses) {
+      console.log(name, statuses[name]);
+      var li = document.createElement("li");
+      var status = statuses[name].data;
+      li.textContent = name + " @ " + status.latitude +
+                       ", " + status.longitude;
+      ul.appendChild(li);
+    }
+  });
+}
+
+</script>
+<h1>Peeps</h1>
+Your name: <input type="text" id="name">
+<ul id="peeps">
+</ul>
