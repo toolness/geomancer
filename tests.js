@@ -127,21 +127,55 @@ runAsyncTests({
 
     var server = http.createServer(onRequest);
     server.listen(PORT, function() {
-      var client = http.createClient(PORT, 'localhost');
-    
+      function client() {
+        return http.createClient(PORT, 'localhost');
+      }
+
       runAsyncTests({
-        basic404: function(onDone) {
-          var request = client.request('GET', '/');
-          request.end();
-          request.on('response', function(response) {
-            assert.equal(response.statusCode, 404);
+        longPollAndUpdate: function(onDone) {
+          var longPollReq = client().request('GET', '/foo/statuses?r=1');
+          longPollReq.end();
+          longPollReq.on('response', function(response) {
+            assert.equal(response.statusCode, 200);
+            var chunks = [];
+            response.on('data', function(chunk) {
+              chunks.push(chunk);
+            });
             response.on('end', function() {
-              server.close();
+              assert.deepEqual(JSON.parse(chunks.join('')), {
+                revision: 1,
+                statuses: {
+                  bob: {
+                    data: "hello",
+                    timestamp: "1970-01-01T00:00:00Z"
+                  }
+                }
+              });
               onDone();
             });
           });
+
+          var updateReq = client().request('POST', '/foo/update');
+          updateReq.end(JSON.stringify({
+            name: 'bob',
+            status: 'hello'
+          }));
+          updateReq.on('response', function(response) {
+            assert.equal(response.statusCode, 200);
+          });
+        },
+        basic404: function(onDone) {
+          var request = client().request('GET', '/');
+          request.end();
+          request.on('response', function(response) {
+            assert.equal(response.statusCode, 404);
+            response.on('end', onDone);
+          });
         }
-      }, onDone);
+      }, function whenServerTestsAreDone() {
+        server.close();
+        onDone();
+      });
     });
   }
 }, function whenAllTestsAreDone() {
