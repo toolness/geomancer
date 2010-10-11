@@ -109,10 +109,6 @@ runAsyncTests({
   },
 
   serverTests: function(onDone) {
-    // TODO: Add tests for
-    // curl http://localhost:8342/foome": "bob", "status": "hello"}'
-    // curl http://localhost:8342/foo/statuses\?r=3
-
     const PORT = 9999;
 
     var http = require('http');
