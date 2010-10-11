@@ -137,6 +137,8 @@ runAsyncTests({
           longPollReq.end();
           longPollReq.on('response', function(response) {
             assert.equal(response.statusCode, 200);
+            assert.equal(response.headers['content-type'],
+                         'application/json');
             var chunks = [];
             response.on('data', function(chunk) {
               chunks.push(chunk);
@@ -162,6 +164,16 @@ runAsyncTests({
           }));
           updateReq.on('response', function(response) {
             assert.equal(response.statusCode, 200);
+          });
+        },
+        channelIndexHTML: function(onDone) {
+          var request = client().request('GET', '/foo/');
+          request.end();
+          request.on('response', function(response) {
+            assert.equal(response.statusCode, 200);
+            assert.equal(response.headers['content-type'],
+                         'text/html; charset=utf-8');
+            response.on('end', onDone);
           });
         },
         basic404: function(onDone) {
