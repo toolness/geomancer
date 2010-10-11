@@ -5,13 +5,8 @@ var sys = require('sys');
 
 var geo = require('./geomancer');
 
-const PORT = 8342;
-const JSON_TYPE = 'text/plain';
-const LONG_POLL_TIMEOUT = 60000;
-
-var channels = new geo.ExpiringChannelMap({
-  lifetime: 1000 * 60 * 60
-});
+const DEFAULT_PORT = 8342;
+const DEFAULT_LONG_POLL_TIMEOUT = 60000;
 
 function return404(response) {
   response.writeHead(404, {'Content-Type': 'text/plain'});
@@ -24,7 +19,7 @@ function returnBadRequest(response) {
 }
 
 function returnJSON(response, obj) {
-  response.writeHead(200, {'Content-Type': JSON_TYPE});
+  response.writeHead(200, {'Content-Type': 'application/json'});
   response.end(JSON.stringify(obj));
 }
 
@@ -52,7 +47,7 @@ function receiveUpdate(request, response, channel) {
   });
 }
 
-function returnStatuses(response, channel, revision) {
+function returnStatuses(response, channel, revision, longPollTimeout) {
   var timeout = null;
   
   function onUpdate() {
@@ -72,41 +67,60 @@ function returnStatuses(response, channel, revision) {
   }
 
   if (revision > channel.revision) {
-    timeout = setTimeout(onTimeout, LONG_POLL_TIMEOUT);
+    timeout = setTimeout(onTimeout, longPollTimeout);
     channel.on('update', onUpdate);
   } else
     onUpdate();
 }
 
-http.createServer(function(request, response) {
-  var info = url.parse(request.url, true);
-  var pathInfo = geo.parsePath(info.pathname);
-  if (pathInfo) {
-    if (pathInfo.command == null) {
-      var file = fs.createReadStream('index.html');
-      response.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8'
-      });
-      sys.pump(file, response);
-      return;
-    } else {
-      var channel = channels.get(pathInfo.channel);
+function create(options) {
+  if (!options.channels)
+    throw new Error("options.channels must be present");
 
-      switch (pathInfo.command) {
-        case 'statuses':
-          var revision = -1;
-          if (info.query &&
-              'r' in info.query &&
-              info.query.r.match(/[1-9][0-9]*/))
-            revision = parseInt(info.query.r);
+  var channels = options.channels;
+  var longPollTimeout = options.longPollTimeout || DEFAULT_LONG_POLL_TIMEOUT;
 
-          returnStatuses(response, channel, revision);
-          return;
-        case 'update':
-          receiveUpdate(request, response, channel);
-          return;
+  return function(request, response) {
+    var info = url.parse(request.url, true);
+    var pathInfo = geo.parsePath(info.pathname);
+    if (pathInfo) {
+      if (pathInfo.command == null) {
+        var file = fs.createReadStream('index.html');
+        response.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8'
+        });
+        sys.pump(file, response);
+        return;
+      } else {
+        var channel = channels.get(pathInfo.channel);
+
+        switch (pathInfo.command) {
+          case 'statuses':
+            var revision = -1;
+            if (info.query &&
+                'r' in info.query &&
+                info.query.r.match(/[1-9][0-9]*/))
+              revision = parseInt(info.query.r);
+
+            returnStatuses(response, channel, revision, longPollTimeout);
+            return;
+          case 'update':
+            receiveUpdate(request, response, channel);
+            return;
+        }
       }
     }
-  }
-  return404(response);
-}).listen(PORT);
+    return404(response);
+  };
+}
+
+exports.create = create;
+
+if (require.main == module) {
+  http.createServer(create({
+    channels: new geo.ExpiringChannelMap({
+      lifetime: 1000 * 60 * 60
+    })
+  })).listen(DEFAULT_PORT);
+  sys.puts('Serving on port ' + DEFAULT_PORT);
+}

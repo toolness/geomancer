@@ -1,6 +1,11 @@
 var assert = require('assert');
 var sys = require("sys");
 var geo = require('./geomancer');
+var geoServer = require('./server');
+
+function whenDone() {
+  sys.puts("Tests successful.");
+}
 
 function TimeMachine(now) {
   this.now = function() {
@@ -80,8 +85,56 @@ function TimeMachine(now) {
   assert.equal(map.get('foo').revision, 0);
 })();
 
-// TODO: Add test for
-// curl http://localhost:8342/foome": "bob", "status": "hello"}'
-// curl http://localhost:8342/foo/statuses\?r=3
+(function serverTests(onDone) {
+  // TODO: Add tests for
+  // curl http://localhost:8342/foome": "bob", "status": "hello"}'
+  // curl http://localhost:8342/foo/statuses\?r=3
 
-sys.puts("Tests successful.");
+  const PORT = 9999;
+
+  var http = require('http');
+  var timeMachine = new TimeMachine(0);
+  var channels = new geo.ExpiringChannelMap({
+    lifetime: 1000,
+    now: timeMachine.now
+  });
+  var onRequest = geoServer.create({
+    channels: channels
+  });
+
+  var server = http.createServer(onRequest);
+  server.listen(PORT, function() {
+    var client = http.createClient(PORT, 'localhost');
+    
+    var asyncTests = {
+      basic404: function(onDone) {
+        var request = client.request('GET', '/');
+        request.end();
+        request.on('response', function(response) {
+          assert.equal(response.statusCode, 404);
+          response.on('end', function() {
+            server.close();
+            onDone();
+          });
+        });
+      }
+    };
+
+    var asyncTestArray = [];
+    for (name in asyncTests)
+      asyncTestArray.push(name);
+
+    var currTestIndex = 0;
+
+    function runNextTest() {
+      if (asyncTestArray.length == currTestIndex)
+        onDone();
+      else {
+        var name = asyncTestArray[currTestIndex++];
+        asyncTests[name](runNextTest);
+      }
+    }
+
+    runNextTest();
+  });
+})(whenDone);
