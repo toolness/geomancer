@@ -12,8 +12,23 @@ input {
   border: 1px dotted gray;
   outline: none;
 }
+
+img#map {
+  opacity: 0.1;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  z-index: -1;
+}
 </style>
 <script>
+var boundingBox = {
+  top: 38.307,
+  left: -122.671,
+  right: -121.613,
+  bottom: 37.153
+};
+
 function $(sel) {
   return document.querySelector(sel);
 }
@@ -71,6 +86,19 @@ function receiveUpdates(onUpdate) {
   longPoll();
 }
 
+function convertLatLong(map, boundingBox, status) {
+  var degWidth = boundingBox.right - boundingBox.left;
+  var degHeight = boundingBox.top - boundingBox.bottom;
+
+  var degX = status.longitude - boundingBox.left;
+  var degY = status.latitude - boundingBox.bottom;
+  
+  return {
+    x: Math.floor(degX * map.width / degWidth),
+    y: map.height - Math.floor(degY * map.height / degHeight)
+  };
+}
+ 
 onload = function() {
   var username = null;
 
@@ -102,14 +130,20 @@ onload = function() {
     for (name in statuses) {
       var li = document.createElement("li");
       var status = statuses[name].data;
-      li.textContent = name + " @ " + status.latitude +
-                       ", " + status.longitude;
+      var map = $("img#map");
+      var coords = convertLatLong(map, boundingBox, status);
+
+      li.textContent = name;
+      li.style.position = "absolute";
+      li.style.top = coords.y + "px";
+      li.style.left = coords.x + "px";
       ul.appendChild(li);
     }
   });
 }
 
 </script>
+<img id="map" src="http://labs.toolness.com/temp/sfbay-silhouette.png">
 <h1>Peeps</h1>
 Your name: <input type="text" id="name">
 <ul id="peeps">
